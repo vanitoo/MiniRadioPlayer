@@ -51,11 +51,20 @@ python -m PyInstaller --clean --noconfirm --noconsole --onefile --name MiniRadio
 
 Готовый файл появится в `dist/MiniRadioPlayer.exe`.
 
-## Сборка через GitHub Actions
+## GitHub Actions и Releases
 
-Workflow `.github/workflows/build-exe.yml` запускается:
+Workflow `.github/workflows/build-exe.yml`:
 
-- автоматически при изменениях `main.py`, `requirements.txt`, `build.bat` или самого workflow в ветке `main`;
-- вручную через **Actions → Build Windows EXE → Run workflow**.
+- автоматически собирает EXE при изменениях приложения в ветке `main`;
+- может запускаться вручную через **Actions → Build Windows EXE → Run workflow**;
+- при push тега вида `v*` собирает EXE, создаёт GitHub Release, генерирует release notes и прикрепляет `MiniRadioPlayer.exe`;
+- после обычной сборки сохраняет EXE как artifact `MiniRadioPlayer-windows` на 14 дней.
 
-После успешной сборки скачайте artifact `MiniRadioPlayer-windows` со страницы запуска workflow.
+Для публикации новой версии:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+После успешного workflow релиз `v1.0.0` появится в разделе **Releases** с прикреплённым `MiniRadioPlayer.exe`.
