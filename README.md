@@ -1,69 +1,61 @@
 # Mini Radio Player
 
-Мини-радиоплеер — Windows-приложение для прослушивания потокового радио в фоне.
+Мини-радиоплеер для Windows на Python + PySide6. Работает в фоне, сворачивается в системный трей и умеет автоматически включать/выключать поток по расписанию.
 
-## Особенности
+## Возможности
 
-- Проигрывание потокового URL (по умолчанию: https://stream.ipdj.ru/listen/cafe/radio.mp3)
-- Минималистичный интерфейс, работает в фоне, сворачивается в трей
-- Автозапуск по расписанию: 08:00–22:00 (настраивается HH:MM)
-- Контроль воспроизведения (Play/Stop), регулировка громкости
-- Сохранение настроек в %APPDATA%/MiniRadioPlayer/settings.json
+- Воспроизведение потокового URL (по умолчанию `https://stream.ipdj.ru/listen/cafe/radio.mp3`)
+- Play / Stop с плавным изменением громкости
+- Регулировка громкости
+- Работа в системном трее
+- Автовоспроизведение по расписанию, включая интервалы через полночь
+- Повторная попытка подключения после ошибки потока
+- Опция запуска свернутым
+- Сохранение настроек в `%APPDATA%/MiniRadioPlayer/settings.json`
 
-## Установка
+## Запуск из исходников
 
-1. Установите зависимости:
-   ```
-   pip install -r requirements.txt
-   ```
+Требуется Python 3.8+.
 
-## Запуск
+```bash
+pip install -r requirements.txt
+python main.py
+```
 
-1. Запустите приложение:
-   ```
-   python main.py
-   ```
+## Настройки
 
-Приложение создаст иконку в трее. Щелчок по иконке открывает окно, правый клик — меню.
+Настройки сохраняются автоматически в `%APPDATA%/MiniRadioPlayer/settings.json`.
 
-## Сборка в .exe (опционально)
+- `stream_url` — URL аудиопотока
+- `start_time` — начало автоматического воспроизведения (`HH:MM`)
+- `end_time` — окончание автоматического воспроизведения (`HH:MM`)
+- `volume` — громкость (`0.0`–`1.0`)
+- `start_minimized` — запуск в свернутом виде (`true`/`false`)
 
-Для создания исполняемого файла используйте предоставленный скрипт сборки:
+Если `start_time == end_time`, расписание считается отключенным.
 
-1. Запустите `build.bat` (Windows).
+## Сборка EXE локально
+
+На Windows запустите:
+
+```bat
+build.bat
+```
 
 Или вручную:
 
-1. Установите PyInstaller:
-   ```
-   pip install pyinstaller
-   ```
+```bash
+python -m pip install -r requirements.txt pyinstaller
+python -m PyInstaller --clean --noconfirm --noconsole --onefile --name MiniRadioPlayer main.py
+```
 
-2. Соберите:
-   ```
-   pyinstaller MiniRadioPlayer.spec
-   ```
-   Или вручную:
-   ```
-   pyinstaller --noconsole --name MiniRadioPlayer --onefile main.py
-   ```
+Готовый файл появится в `dist/MiniRadioPlayer.exe`.
 
-   (PyInstaller обычно автоматически включает QtMultimedia; если нет, добавьте: `--add-data "{pyside6_dir}/Qt/plugins;PySide6/Qt/plugins"`)
+## Сборка через GitHub Actions
 
-Собранный файл `MiniRadioPlayer.exe` появится в папке `dist/`.
+Workflow `.github/workflows/build-exe.yml` запускается:
 
-## Конфигурация
+- автоматически при изменениях `main.py`, `requirements.txt`, `build.bat` или самого workflow в ветке `main`;
+- вручную через **Actions → Build Windows EXE → Run workflow**.
 
-Настройки сохраняются автоматически в `%APPDATA%/MiniRadioPlayer/settings.json`. Можно редактировать вручную или через интерфейс.
-
-- `stream_url`: URL потока
-- `start_time`: Время начала автозапуска (HH:MM)
-- `end_time`: Время окончания автозапуска (HH:MM)
-- `volume`: Громкость (0.0–1.0)
-- `start_minimized`: Запуск в свернутом виде (true/false)
-
-## Требования
-
-- Python 3.8+
-- PySide6
-
+После успешной сборки скачайте artifact `MiniRadioPlayer-windows` со страницы запуска workflow.
