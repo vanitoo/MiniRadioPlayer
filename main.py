@@ -41,7 +41,10 @@ from PySide6.QtWidgets import (
 
 APP_NAME = "MiniRadioPlayer"
 APP_USER_MODEL_ID = "vanitoo.MiniRadioPlayer"
-ICON_RELATIVE_PATH = Path("assets") / "MiniRadioPlayer.svg"
+ICON_RELATIVE_PATHS = (
+    Path("assets") / "MiniRadioPlayer.ico",
+    Path("assets") / "MiniRadioPlayer.svg",
+)
 
 STATIONS = {
     "Cafe — Soulful House": "https://stream.ipdj.ru/listen/cafe/radio.mp3",
@@ -65,8 +68,13 @@ def resource_path(relative_path: Path) -> Path:
 
 
 def load_app_icon() -> QIcon:
-    icon_path = resource_path(ICON_RELATIVE_PATH)
-    return QIcon(str(icon_path)) if icon_path.exists() else QIcon()
+    for relative_path in ICON_RELATIVE_PATHS:
+        icon_path = resource_path(relative_path)
+        if icon_path.exists():
+            icon = QIcon(str(icon_path))
+            if not icon.isNull():
+                return icon
+    return QIcon()
 
 
 def configure_windows_app_id() -> None:

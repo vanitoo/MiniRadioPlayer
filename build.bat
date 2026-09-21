@@ -12,7 +12,7 @@ if errorlevel 1 exit /b 1
 python build_icon.py
 if errorlevel 1 exit /b 1
 
-python -m PyInstaller --clean --noconfirm --noconsole --onefile --name MiniRadioPlayer --icon assets\MiniRadioPlayer.ico --add-data "assets\MiniRadioPlayer.svg;assets" main.py
+python -m PyInstaller --clean --noconfirm --noconsole --onefile --name MiniRadioPlayer --icon assets\MiniRadioPlayer.ico --add-data "assets\MiniRadioPlayer.ico;assets" --add-data "assets\MiniRadioPlayer.svg;assets" main.py
 if errorlevel 1 exit /b 1
 
 echo.
