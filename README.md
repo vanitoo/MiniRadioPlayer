@@ -4,6 +4,7 @@
 
 ## Возможности
 
+- Быстрый выбор одной из встроенных станций IPDJ или собственного URL
 - Воспроизведение потокового URL (по умолчанию `https://stream.ipdj.ru/listen/cafe/radio.mp3`)
 - Play / Stop с плавным изменением громкости
 - Регулировка громкости
@@ -21,6 +22,19 @@
 pip install -r requirements.txt
 python main.py
 ```
+
+## Встроенные станции
+
+В интерфейсе доступен выпадающий список:
+
+- **Cafe — Soulful House** — `https://stream.ipdj.ru/listen/cafe/radio.mp3`
+- **Restaurant — Lounge** — `https://stream.ipdj.ru/listen/restouran/radio.mp3`
+- **Beer Restaurant — Jazz & Blues** — `https://stream.ipdj.ru/listen/pivrest/radio.mp3`
+- **Bar — Rock & Grunge** — `https://stream.ipdj.ru/listen/bar/radio.mp3`
+- **Barbershop — Rap & Bass House** — `https://stream.ipdj.ru/listen/barber/radio.mp3`
+- **Custom URL** — позволяет ввести любой совместимый поток вручную.
+
+При выборе встроенной станции её URL подставляется автоматически. Если воспроизведение уже запущено, поток переключается сразу.
 
 ## Настройки
 

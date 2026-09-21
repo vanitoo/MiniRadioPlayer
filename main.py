@@ -22,6 +22,7 @@ from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
+    QComboBox,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -39,7 +40,17 @@ from PySide6.QtWidgets import (
 
 
 APP_NAME = "MiniRadioPlayer"
-DEFAULT_URL = "https://stream.ipdj.ru/listen/cafe/radio.mp3"
+
+STATIONS = {
+    "Cafe — Soulful House": "https://stream.ipdj.ru/listen/cafe/radio.mp3",
+    "Restaurant — Lounge": "https://stream.ipdj.ru/listen/restouran/radio.mp3",
+    "Beer Restaurant — Jazz & Blues": "https://stream.ipdj.ru/listen/pivrest/radio.mp3",
+    "Bar — Rock & Grunge": "https://stream.ipdj.ru/listen/bar/radio.mp3",
+    "Barbershop — Rap & Bass House": "https://stream.ipdj.ru/listen/barber/radio.mp3",
+}
+CUSTOM_STATION = "Custom URL"
+DEFAULT_URL = STATIONS["Cafe — Soulful House"]
+
 SCHEDULE_INTERVAL_MS = 20_000
 RETRY_DELAY_SECONDS = 60
 FADE_INTERVAL_MS = 50
@@ -100,7 +111,7 @@ class MiniRadio(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Mini Radio")
-        self.setFixedSize(400, 220)
+        self.setFixedSize(440, 265)
         self.setWindowFlags(
             self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
         )
@@ -150,15 +161,31 @@ class MiniRadio(QWidget):
         root.setContentsMargins(10, 10, 10, 10)
         root.setSpacing(5)
 
-        url_box = QVBoxLayout()
-        url_label = QLabel("Stream URL")
-        url_label.setStyleSheet("color: #bbb;")
+        station_box = QVBoxLayout()
+        station_label = QLabel("Station")
+        station_label.setStyleSheet("color: #bbb;")
+
+        self.station_combo = QComboBox()
+        self.station_combo.addItems([*STATIONS.keys(), CUSTOM_STATION])
+
+        current_station = self._station_name_for_url(self.settings.stream_url)
+        self.station_combo.setCurrentText(current_station)
+
         self.url_edit = QLineEdit(self.settings.stream_url)
         self.url_edit.setPlaceholderText("https://...")
         self.url_edit.setStyleSheet("padding:6px;")
-        url_box.addWidget(url_label)
-        url_box.addWidget(self.url_edit)
-        root.addLayout(url_box)
+        self.url_edit.setReadOnly(current_station != CUSTOM_STATION)
+
+        self.station_combo.currentTextChanged.connect(self._on_station_changed)
+
+        station_box.addWidget(station_label)
+        station_box.addWidget(self.station_combo)
+
+        url_label = QLabel("Stream URL")
+        url_label.setStyleSheet("color: #bbb;")
+        station_box.addWidget(url_label)
+        station_box.addWidget(self.url_edit)
+        root.addLayout(station_box)
 
         ctrl = QHBoxLayout()
         self.btn_play = QPushButton("Play")
@@ -218,7 +245,7 @@ class MiniRadio(QWidget):
         self.setStyleSheet(
             """
             QWidget { background:#111217; color:#f4f6f8; }
-            QLineEdit, QGroupBox {
+            QLineEdit, QComboBox, QGroupBox {
                 background:#161821;
                 border:1px solid #2a2d36;
                 border-radius:4px;
@@ -282,6 +309,34 @@ class MiniRadio(QWidget):
         self.raise_()
         self.activateWindow()
 
+    # ---------------------- Stations ----------------------
+    def _station_name_for_url(self, url: str) -> str:
+        for name, station_url in STATIONS.items():
+            if url == station_url:
+                return name
+        return CUSTOM_STATION
+
+    def _on_station_changed(self, station_name: str):
+        station_url = STATIONS.get(station_name)
+        is_custom = station_url is None
+
+        self.url_edit.setReadOnly(not is_custom)
+
+        if is_custom:
+            self.url_edit.setFocus()
+            self.url_edit.selectAll()
+            self._set_status("Enter custom stream URL")
+            return
+
+        self.url_edit.setText(station_url)
+        self.settings.stream_url = station_url
+        self.settings.save()
+
+        if self.is_playing:
+            self.play()
+        else:
+            self._set_status(f"Selected: {station_name}")
+
     # ---------------------- Player ----------------------
     def play(self, *, scheduled: bool = False):
         url = self.url_edit.text().strip()
@@ -299,7 +354,11 @@ class MiniRadio(QWidget):
         self.player.play()
         self._persist_runtime_settings()
         self._start_fade(self.settings.volume, stop_after=False)
-        self._set_status("Connecting…")
+        station_name = self._station_name_for_url(url)
+        if station_name == CUSTOM_STATION:
+            self._set_status("Connecting to custom stream…")
+        else:
+            self._set_status(f"Connecting: {station_name}…")
 
     def stop(self):
         if (
