@@ -8,7 +8,9 @@
 - Воспроизведение потокового URL (по умолчанию `https://stream.ipdj.ru/listen/cafe/radio.mp3`)
 - Play / Stop с плавным изменением громкости
 - Регулировка громкости
-- Работа в системном трее
+- Работа в системном трее: сворачивание и закрытие окна полностью убирают его с панели задач
+- Фирменная иконка в окне, трее и собранном EXE
+- Тёмная системная строка заголовка Windows
 - Автовоспроизведение по расписанию, включая интервалы через полночь
 - Повторная попытка подключения после ошибки потока
 - Опция запуска свернутым
@@ -16,7 +18,7 @@
 
 ## Запуск из исходников
 
-Требуется Python 3.8+.
+Требуется Python 3.10+.
 
 ```bash
 pip install -r requirements.txt
@@ -59,11 +61,12 @@ build.bat
 Или вручную:
 
 ```bash
-python -m pip install -r requirements.txt pyinstaller
-python -m PyInstaller --clean --noconfirm --noconsole --onefile --name MiniRadioPlayer main.py
+python -m pip install -r requirements.txt pyinstaller pillow
+python build_icon.py
+python -m PyInstaller --clean --noconfirm --noconsole --onefile --name MiniRadioPlayer --icon assets/MiniRadioPlayer.ico --add-data "assets/MiniRadioPlayer.svg;assets" main.py
 ```
 
-Готовый файл появится в `dist/MiniRadioPlayer.exe`.
+Готовый файл появится в `dist/MiniRadioPlayer.exe`. Исходник иконки хранится в `assets/MiniRadioPlayer.svg`; `build_icon.py` генерирует Windows ICO перед сборкой.
 
 ## GitHub Actions и Releases
 

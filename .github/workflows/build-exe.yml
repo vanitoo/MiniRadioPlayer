@@ -11,6 +11,8 @@ on:
       - "main.py"
       - "requirements.txt"
       - "build.bat"
+      - "build_icon.py"
+      - "assets/**"
       - ".github/workflows/build-exe.yml"
 
 permissions:
@@ -35,12 +37,17 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt pyinstaller
+          python -m pip install -r requirements.txt pyinstaller pillow
+
+      - name: Generate Windows icon
+        shell: pwsh
+        run: |
+          python build_icon.py
 
       - name: Build EXE
         shell: pwsh
         run: |
-          python -m PyInstaller --clean --noconfirm --noconsole --onefile --name MiniRadioPlayer main.py
+          python -m PyInstaller --clean --noconfirm --noconsole --onefile --name MiniRadioPlayer --icon assets/MiniRadioPlayer.ico --add-data "assets/MiniRadioPlayer.svg;assets" main.py
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4

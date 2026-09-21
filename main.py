@@ -16,8 +16,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, time as dtime, timedelta
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, Qt, QUrl
-from PySide6.QtGui import QAction
+from PySide6.QtCore import QEvent, QTimer, Qt, QUrl
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QApplication,
@@ -40,6 +40,8 @@ from PySide6.QtWidgets import (
 
 
 APP_NAME = "MiniRadioPlayer"
+APP_USER_MODEL_ID = "vanitoo.MiniRadioPlayer"
+ICON_RELATIVE_PATH = Path("assets") / "MiniRadioPlayer.svg"
 
 STATIONS = {
     "Cafe — Soulful House": "https://stream.ipdj.ru/listen/cafe/radio.mp3",
@@ -55,6 +57,50 @@ SCHEDULE_INTERVAL_MS = 20_000
 RETRY_DELAY_SECONDS = 60
 FADE_INTERVAL_MS = 50
 FADE_STEP = 0.02
+
+
+def resource_path(relative_path: Path) -> Path:
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return base / relative_path
+
+
+def load_app_icon() -> QIcon:
+    icon_path = resource_path(ICON_RELATIVE_PATH)
+    return QIcon(str(icon_path)) if icon_path.exists() else QIcon()
+
+
+def configure_windows_app_id() -> None:
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            APP_USER_MODEL_ID
+        )
+    except Exception:
+        pass
+
+
+def enable_dark_title_bar(widget: QWidget) -> None:
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        hwnd = int(widget.winId())
+        enabled = ctypes.c_int(1)
+        for attribute in (20, 19):
+            result = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd,
+                attribute,
+                ctypes.byref(enabled),
+                ctypes.sizeof(enabled),
+            )
+            if result == 0:
+                break
+    except Exception:
+        pass
 
 
 def app_data_dir() -> Path:
@@ -111,10 +157,18 @@ class MiniRadio(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Mini Radio")
-        self.setFixedSize(440, 265)
+        self.resize(460, 300)
+        self.setMinimumSize(460, 300)
         self.setWindowFlags(
             self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint
         )
+
+        self.app_icon = load_app_icon()
+        if self.app_icon.isNull():
+            self.app_icon = self.style().standardIcon(
+                QStyle.StandardPixmap.SP_MediaPlay
+            )
+        self.setWindowIcon(self.app_icon)
 
         self.settings = PlayerSettings.load()
         self.is_playing = False
@@ -138,28 +192,25 @@ class MiniRadio(QWidget):
         self._build_ui()
 
         self.tray = QSystemTrayIcon(self)
-        self.tray.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-        )
+        self.tray.setIcon(self.app_icon)
         self.tray.setToolTip("Mini Radio Player")
         self._build_tray_menu()
         self.tray.activated.connect(self._tray_activated)
         self.tray.show()
+        self._update_tray_tooltip("Ready")
 
         self.timer = QTimer(self)
         self.timer.setInterval(SCHEDULE_INTERVAL_MS)
         self.timer.timeout.connect(self._check_schedule_and_apply)
         self.timer.start()
 
-        if self.settings.start_minimized:
-            QTimer.singleShot(0, self.hide)
         QTimer.singleShot(200, self._check_schedule_and_apply)
 
     # ---------------------- UI ----------------------
     def _build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 10, 10, 10)
-        root.setSpacing(5)
+        root.setContentsMargins(14, 12, 14, 12)
+        root.setSpacing(8)
 
         station_box = QVBoxLayout()
         station_label = QLabel("Station")
@@ -173,7 +224,6 @@ class MiniRadio(QWidget):
 
         self.url_edit = QLineEdit(self.settings.stream_url)
         self.url_edit.setPlaceholderText("https://...")
-        self.url_edit.setStyleSheet("padding:6px;")
         self.url_edit.setReadOnly(current_station != CUSTOM_STATION)
 
         self.station_combo.currentTextChanged.connect(self._on_station_changed)
@@ -188,8 +238,12 @@ class MiniRadio(QWidget):
         root.addLayout(station_box)
 
         ctrl = QHBoxLayout()
+        ctrl.setSpacing(8)
         self.btn_play = QPushButton("Play")
+        self.btn_play.setObjectName("primaryButton")
+        self.btn_play.setMinimumWidth(72)
         self.btn_stop = QPushButton("Stop")
+        self.btn_stop.setMinimumWidth(72)
         self.btn_play.clicked.connect(lambda: self.play())
         self.btn_stop.clicked.connect(self.stop)
         ctrl.addWidget(self.btn_play)
@@ -210,8 +264,9 @@ class MiniRadio(QWidget):
 
         grp = QGroupBox("Auto play schedule")
         grid = QGridLayout()
+        grid.setContentsMargins(10, 18, 10, 10)
         grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(6)
+        grid.setVerticalSpacing(8)
 
         grid.addWidget(QLabel("Start"), 0, 0)
         self.start_edit = QLineEdit(self.settings.start_time)
@@ -239,39 +294,87 @@ class MiniRadio(QWidget):
         root.addWidget(grp)
 
         self.status_lbl = QLabel("Ready")
-        self.status_lbl.setStyleSheet("color:#999;")
+        self.status_lbl.setObjectName("statusLabel")
         root.addWidget(self.status_lbl)
 
         self.setStyleSheet(
             """
-            QWidget { background:#111217; color:#f4f6f8; }
-            QLineEdit, QComboBox, QGroupBox {
-                background:#161821;
-                border:1px solid #2a2d36;
-                border-radius:4px;
+            QWidget {
+                background:#0f1117;
+                color:#f4f6f8;
+                font-size:12px;
             }
-            QPushButton {
-                background:#232633;
-                border:1px solid #3a3f4b;
-                padding:4px 8px;
-                border-radius:4px;
+            QLabel, QCheckBox {
+                background:transparent;
             }
-            QPushButton:hover { background:#2b2f3e; }
+            QLineEdit, QComboBox {
+                background:#171a23;
+                border:1px solid #2d3240;
+                border-radius:6px;
+                padding:6px 9px;
+                min-height:20px;
+            }
+            QLineEdit:read-only {
+                background:#141720;
+                color:#c8ced9;
+            }
+            QComboBox::drop-down {
+                border:0;
+                width:28px;
+            }
+            QGroupBox {
+                background:#141720;
+                border:1px solid #2a2f3c;
+                border-radius:7px;
+                margin-top:10px;
+            }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left:8px;
-                padding:0 2px;
+                subcontrol-position: top left;
+                left:10px;
+                padding:0 4px;
+                color:#dce1ea;
+            }
+            QPushButton {
+                background:#222733;
+                border:1px solid #394050;
+                padding:5px 10px;
+                min-height:24px;
+                border-radius:6px;
+            }
+            QPushButton:hover {
+                background:#2b3240;
+                border-color:#4b5568;
+            }
+            QPushButton:pressed {
+                background:#1b202a;
+            }
+            QPushButton#primaryButton {
+                background:#2f6fed;
+                border-color:#397cff;
+                font-weight:600;
+            }
+            QPushButton#primaryButton:hover {
+                background:#397cff;
             }
             QSlider::groove:horizontal {
                 height:4px;
-                background:#2a2d36;
+                background:#2a2f3a;
+                border-radius:2px;
+            }
+            QSlider::sub-page:horizontal {
+                background:#3d78ff;
                 border-radius:2px;
             }
             QSlider::handle:horizontal {
-                width:12px;
-                background:#5b6bff;
-                margin:-4px 0;
-                border-radius:6px;
+                width:14px;
+                background:#6d87ff;
+                margin:-5px 0;
+                border-radius:7px;
+            }
+            QLabel#statusLabel {
+                color:#929baa;
+                padding-top:2px;
             }
             """
         )
@@ -305,9 +408,26 @@ class MiniRadio(QWidget):
             self._show_window()
 
     def _show_window(self):
-        self.show()
+        self.showNormal()
+        enable_dark_title_bar(self)
         self.raise_()
         self.activateWindow()
+
+    def _hide_to_tray(self, show_message: bool = False):
+        self.hide()
+        if show_message and self.tray.isVisible():
+            self.tray.showMessage(
+                "Mini Radio",
+                "Still running in tray. Right-click the icon for options.",
+                QSystemTrayIcon.MessageIcon.Information,
+                2500,
+            )
+
+    def _update_tray_tooltip(self, state: str):
+        station = self._station_name_for_url(self.url_edit.text().strip())
+        if station == CUSTOM_STATION:
+            station = "Custom stream"
+        self.tray.setToolTip(f"Mini Radio — {state}\n{station}")
 
     # ---------------------- Stations ----------------------
     def _station_name_for_url(self, url: str) -> str:
@@ -336,6 +456,7 @@ class MiniRadio(QWidget):
             self.play()
         else:
             self._set_status(f"Selected: {station_name}")
+            self._update_tray_tooltip("Ready")
 
     # ---------------------- Player ----------------------
     def play(self, *, scheduled: bool = False):
@@ -422,20 +543,17 @@ class MiniRadio(QWidget):
 
         if self.is_playing:
             self._next_retry_at = None
-            self.tray.setIcon(
-                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause)
-            )
             self._set_status("Playing")
+            self._update_tray_tooltip("Playing")
             return
 
         if state == QMediaPlayer.PlaybackState.StoppedState:
-            self.tray.setIcon(
-                self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-            )
             if self._last_error_message:
                 self._set_status(f"Failed: {self._last_error_message}")
+                self._update_tray_tooltip("Error")
             else:
                 self._set_status("Stopped")
+                self._update_tray_tooltip("Stopped")
 
     def _on_error(self, _error, message):
         self.fade_timer.stop()
@@ -446,17 +564,13 @@ class MiniRadio(QWidget):
         )
         self.player.stop()
         self.is_playing = False
-        self.tray.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-        )
         self._set_status(f"Failed: {self._last_error_message}")
+        self._update_tray_tooltip("Error")
 
     def _set_stopped_ui(self):
         self.is_playing = False
-        self.tray.setIcon(
-            self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-        )
         self._set_status("Stopped")
+        self._update_tray_tooltip("Stopped")
 
     # ---------------------- Schedule ----------------------
     def _parse_hhmm(self, value: str) -> dtime | None:
@@ -554,23 +668,39 @@ class MiniRadio(QWidget):
         QApplication.quit()
 
     # ---------------------- Window overrides ----------------------
+    def showEvent(self, event):
+        super().showEvent(event)
+        QTimer.singleShot(0, lambda: enable_dark_title_bar(self))
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if (
+            event.type() == QEvent.Type.WindowStateChange
+            and self.isMinimized()
+        ):
+            QTimer.singleShot(0, self._hide_to_tray)
+
     def closeEvent(self, event):
         event.ignore()
-        self.hide()
-        if self.tray.isVisible():
-            self.tray.showMessage(
-                "Mini Radio",
-                "Still running in tray. Right-click the icon for options.",
-                QSystemTrayIcon.MessageIcon.Information,
-                3000,
-            )
+        self._hide_to_tray(show_message=True)
 
 
 def main():
+    configure_windows_app_id()
+
     app = QApplication(sys.argv)
+    app.setApplicationName("Mini Radio")
+    app.setOrganizationName("vanitoo")
     app.setQuitOnLastWindowClosed(False)
+
+    app_icon = load_app_icon()
+    if not app_icon.isNull():
+        app.setWindowIcon(app_icon)
+
     window = MiniRadio()
-    window.show()
+    if not window.settings.start_minimized:
+        window.show()
+
     sys.exit(app.exec())
 
 

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="56" x2="436" y2="456" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#25c4ff"/>
+      <stop offset="0.5" stop-color="#2683ff"/>
+      <stop offset="1" stop-color="#3156f4"/>
+    </linearGradient>
+    <linearGradient id="radio" x1="150" y1="190" x2="358" y2="382" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dce8ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#061a43" flood-opacity=".35"/>
+    </filter>
+  </defs>
+
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="url(#bg)" filter="url(#shadow)"/>
+  <path d="M142 202L300 132" fill="none" stroke="#fff" stroke-width="25" stroke-linecap="round"/>
+
+  <g fill="none" stroke="#fff" stroke-width="24" stroke-linecap="round">
+    <path d="M341 132c42 9 72 41 78 82"/>
+    <path d="M347 178c20 6 34 21 39 42"/>
+  </g>
+
+  <rect x="113" y="202" width="286" height="188" rx="62" fill="url(#radio)"/>
+  <rect x="147" y="244" width="104" height="18" rx="9" fill="#246fe8"/>
+  <rect x="147" y="286" width="104" height="18" rx="9" fill="#246fe8"/>
+  <rect x="147" y="328" width="104" height="18" rx="9" fill="#246fe8"/>
+  <circle cx="326" cy="296" r="44" fill="#286fec"/>
+  <circle cx="326" cy="296" r="22" fill="#1c56ca"/>
+</svg>
